@@ -1,0 +1,152 @@
+﻿@{
+    ViewData["Title"] = "停車場查詢系統";
+}
+
+<div class="container">
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarContent">
+                <div class="d-flex">
+                    <input class="form-control me-2" type="search" placeholder="輸入" id="searchInput">
+                    <button class="btn btn-secondary" id="searchBtn">搜尋</button>
+                </div>
+                <div class="ms-auto">
+                    <a href="/Parking/Index" class="text-dark text-decoration-none me-3">首頁</a>
+                    <a href="/Parking/Map" class="text-dark text-decoration-none">資訊查詢</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="text-center my-5">
+        <h1 class="display-4 mb-3">台中市停車場查詢系統</h1>
+        <p class="lead text-muted">GOOGLE MAP</p>
+    </div>
+    <div class="col-md-9">
+        <div id="map" style="height: 85vh; width: 100%; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);"></div>
+    </div>
+    <div id="results" class="row mt-3">
+    </div>
+
+</div>
+@section Styles {
+    <style>
+        .navbar {
+            padding: 1rem;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .navbar-toggler {
+            border: none;
+        }
+
+        .form-control {
+            width: 200px;
+        }
+
+        .result-card {
+            transition: all 0.3s ease;
+        }
+
+            .result-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            }
+    </style>
+}
+@section Scripts {
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAe6DIdm3Yj2xVzUq97EP6-tuUeUSyZFAI&libraries=places&callback=initMap" async defer></script>
+    <script>
+        let map;
+        let markers = [];
+        let searchBox;
+
+        function initMap() {
+            // 初始化地圖
+            map = new google.maps.Map(document.getElementById("map"), {
+                center: { lat: 24.1477358, lng: 120.6736482 },
+                zoom: 13
+            });
+
+            // 初始化搜尋框
+            const input = document.getElementById('searchInput');
+            searchBox = new google.maps.places.Autocomplete(input, {
+                componentRestrictions: { country: 'tw' }, // 限制在台灣
+                fields: ['formatted_address', 'geometry', 'name'],
+            });
+
+            // 監聽搜尋結果
+            searchBox.addListener('place_changed', function() {
+                const place = searchBox.getPlace();
+
+                if (!place.geometry) {
+                    console.log("找不到此地點");
+                    return;
+                }
+
+                // 移動地圖到搜尋位置
+                map.setCenter(place.geometry.location);
+                map.setZoom(15);
+            });
+        }
+
+        $(document).ready(function() {
+            $('#searchBtn').click(function() {
+                var keyword = $('#searchInput').val();
+
+                $.ajax({
+                    url: '/Parking/Search',
+                    type: 'GET',
+                    data: { keyword: keyword },
+                    success: function(data) {
+                        $('#results').empty();
+                        clearMarkers();
+
+                        data.forEach(function(item) {
+                            // 添加到列表
+                            $('#results').append(`
+                                <div class="list-group-item">
+                                    <h6>${item.position}</h6>
+                                    <p class="mb-1">可用車位: ${item.availableCar}/${item.totalCar}</p>
+                                </div>
+                            `);
+
+                            // 添加標記到地圖
+                            if(item.x && item.y) {
+                                const marker = new google.maps.Marker({
+                                    position: { lat: parseFloat(item.y), lng: parseFloat(item.x) },
+                                    map: map,
+                                    title: item.position
+                                });
+
+                                const infowindow = new google.maps.InfoWindow({
+                                    content: `
+                                        <div>
+                                            <h6>${item.position}</h6>
+                                            <p>可用車位: ${item.availableCar}/${item.totalCar}</p>
+                                        </div>
+                                    `
+                                });
+
+                                marker.addListener('click', () => {
+                                    infowindow.open(map, marker);
+                                });
+
+                                markers.push(marker);
+                            }
+                        });
+                    }
+                });
+            });
+        });
+
+        function clearMarkers() {
+            markers.forEach(marker => marker.setMap(null));
+            markers = [];
+        }
+    </script>
+}

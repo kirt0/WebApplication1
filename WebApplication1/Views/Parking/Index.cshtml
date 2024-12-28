@@ -1,0 +1,148 @@
+﻿@{
+    ViewData["Title"] = "停車場查詢系統";
+}
+
+<div class="container">
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarContent">
+                <div class="d-flex">
+                    <input class="form-control me-2" type="search" placeholder="輸入" id="searchInput">
+                    <button class="btn btn-secondary" id="searchBtn">搜尋</button>
+                </div>
+                <div class="ms-auto">
+                    <a href="#" class="text-dark text-decoration-none me-3">首頁</a>
+                    <a href="/Parking/Map" class="text-dark text-decoration-none">資訊查詢</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="text-center my-5">
+        <h1 class="display-4 mb-3">台中市停車場查詢系統</h1>
+        <p class="lead text-muted">即時的資訊獲取</p>
+    </div>
+
+    <div id="results" class="row mt-3">
+    </div>
+
+    <div class="row mt-5">
+        <div class="col-md-6">
+            <img src="/NewFolder/120136797_p0.png" alt="停車場示意圖" class="img-fluid rounded shadow" style="height: 300px; width: 100%; object-fit: cover;">
+        </div>
+        <div class="col-md-6">
+            <h2>台中市停車場查詢系統</h2>
+            <p class="text-muted">介紹</p>
+            <p class="text-muted">
+                此停車場查詢系統提供即時停車位資訊，功能包括：
+
+                即時查詢：顯示各停車場目前可用車位數量
+                區域搜尋：輸入區域名稱(如北屯、南屯等但限台中市內)可找到相關停車場
+                視覺化顯示：
+
+                顯示剩餘車位百分比
+                使用顏色區分車位狀態(綠色充足、黃色較少、紅色緊張)
+                進度條直觀展示車位使用情況
+
+
+
+                這些功能幫助用戶快速找到合適的停車位置。
+            </p>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .navbar {
+            padding: 1rem;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .navbar-toggler {
+            border: none;
+        }
+
+        .form-control {
+            width: 200px;
+        }
+
+        .result-card {
+            transition: all 0.3s ease;
+        }
+
+            .result-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            $('#searchBtn').click(function() {
+                console.log('Button clicked');
+                var keyword = $('#searchInput').val();
+                console.log('Keyword:', keyword);
+
+                $.ajax({
+                    url: '/Parking/Search',
+                    type: 'GET',
+                    data: { keyword: keyword },
+                    success: function(data) {
+                        console.log('Data received:', data);
+                        $('#results').empty();
+                        data.forEach(function(item) {
+                            var availablePercentage = (item.availableCar / item.totalCar) * 100;
+                            var statusColor = availablePercentage > 50 ? 'success' :
+                                            availablePercentage > 20 ? 'warning' : 'danger';
+
+                                    $('#results').append(`
+            <div class="col-md-4 mb-4">
+                <div class="card result-card">
+                    <div class="card-body">
+                        <h5 class="card-title">${item.position}</h5>
+                        <div class="mt-3">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>可用車位:</span>
+                                <span class="text-${statusColor}">${item.availableCar} / ${item.totalCar}</span>
+                            </div>
+                            <div class="mb-2">
+                                <strong>收費說明:</strong>
+                                <p class="small text-muted">${item.notes || '暫無資料'}</p>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar bg-${statusColor}"
+                                     role="progressbar"
+                                     style="width: ${availablePercentage}%"
+                                     aria-valuenow="${availablePercentage}"
+                                     aria-valuemin="0"
+                                     aria-valuemax="100">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `);
+                        });
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error:', xhr.responseText);
+                    }
+                });
+            });
+
+            $('#searchInput').keypress(function(e) {
+                if(e.which == 13) {
+                    $('#searchBtn').click();
+                }
+            });
+        });
+    </script>
+}
